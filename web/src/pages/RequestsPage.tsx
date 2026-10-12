@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { api, getErrorMessage } from '../api/client'
 import { useFetch } from '../api/useFetch'
 import type { CustomerRequest } from '../api/types'
 import { StatusBadge } from '../components/StatusBadge'
@@ -55,14 +56,42 @@ export function RequestsPage() {
     `/requests${queryString ? `?${queryString}` : ''}`,
   )
 
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  // Downloads the list with the filters that are active right now.
+  async function exportCsv() {
+    setExportError(null)
+    setExporting(true)
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      await api.download(`/requests/export${queryString ? `?${queryString}` : ''}`, `requests-${today}.csv`)
+    } catch (err) {
+      setExportError(getErrorMessage(err))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <>
       <div className="page-title">
         <h1>Requests</h1>
-        <Link to="/requests/new" className="btn">
-          New request
-        </Link>
+        <div className="actions">
+          <button type="button" className="btn btn-secondary" onClick={exportCsv} disabled={exporting}>
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </button>
+          <Link to="/requests/new" className="btn">
+            New request
+          </Link>
+        </div>
       </div>
+
+      {exportError && (
+        <p className="error" role="alert">
+          {exportError}
+        </p>
+      )}
 
       <div className="toolbar">
         <div className="field">

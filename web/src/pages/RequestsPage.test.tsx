@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearSession } from '../auth/session'
@@ -48,6 +48,26 @@ describe('RequestsPage', () => {
 
     expect(await screen.findByRole('link', { name: 'Only Anna' })).toBeTruthy()
     expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?clientName=ann', expect.anything())
+  })
+
+  it('downloads a CSV with the active filters', async () => {
+    const fetchMock = mockApi({
+      'GET /api/requests?status=done': [makeRequest({ status: 'done' })],
+      'GET /api/requests/export?status=done': 'ID,Title',
+    })
+    // jsdom cannot create object URLs or follow download links, so we fake both.
+    URL.createObjectURL = vi.fn(() => 'blob:fake')
+    URL.revokeObjectURL = vi.fn()
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    renderPage(<RequestsPage />, { path: '/requests', url: '/requests?status=done' })
+    await screen.findByRole('link', { name: 'Fix the door' })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Export CSV' }))
+
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1))
+    expect(fetchMock).toHaveBeenCalledWith('/api/requests/export?status=done', expect.anything())
+    expect((click.mock.contexts[0] as HTMLAnchorElement).download).toMatch(/^requests-\d{4}-\d{2}-\d{2}\.csv$/)
+    click.mockRestore()
   })
 
   it('shows a message when nothing matches', async () => {
