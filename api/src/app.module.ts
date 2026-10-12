@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from './config/config.module';
 import { Env } from './config/env.validation';
+import { migrations } from './database/migrations';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -18,10 +21,14 @@ import { HealthModule } from './health/health.module';
         password: config.get('DATABASE_PASSWORD'),
         database: config.get('DATABASE_NAME'),
         autoLoadEntities: true, // every module registers its own entities
-        synchronize: false, // schema changes go through migrations (added in step b)
+        synchronize: false, // never let TypeORM change the schema on its own
+        migrations,
+        migrationsRun: true, // apply pending migrations when the app starts
       }),
     }),
     HealthModule,
+    UsersModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
