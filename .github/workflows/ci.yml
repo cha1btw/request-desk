@@ -1,0 +1,101 @@
+name: CI
+
+# Runs on every push and on every pull request.
+on:
+  push:
+  pull_request:
+
+# A new push cancels the older run of the same branch that is still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API (lint, typecheck, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+
+    # A real Postgres for the e2e tests. These values exist only inside this CI run.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: request_desk
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: request_desk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U request_desk"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_USER: request_desk
+      DATABASE_PASSWORD: ci-only-password
+      DATABASE_NAME: request_desk
+      JWT_SECRET: ci-only-secret-0123456789abcdef0123456789abcdef
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm run build
+
+  web:
+    name: Web (lint, typecheck, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    name: Docker Compose smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create .env from the example with a CI-only secret
+        run: |
+          cp .env.example .env
+          sed -i 's/^JWT_SECRET=.*/JWT_SECRET=ci-only-secret-0123456789abcdef0123456789abcdef/' .env
+      # --wait returns when every service with a healthcheck is healthy
+      - name: Build and start all services
+        run: docker compose up -d --build --wait
+      - name: API answers through nginx and directly
+        run: |
+          curl --fail --silent http://localhost:3000/api/health
+          curl --fail --silent http://localhost:5173/api/health
+      - name: Web app is served
+        run: curl --fail --silent http://localhost:5173/ | grep -q "Request Desk"
+      - name: Show logs if something failed
+        if: failure()
+        run: docker compose logs
