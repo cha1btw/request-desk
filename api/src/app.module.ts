@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ClientsModule } from './clients/clients.module';
 import { ConfigModule } from './config/config.module';
 import { Env } from './config/env.validation';
 import { migrations } from './database/migrations';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
+import { RequestsModule } from './requests/requests.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -29,6 +31,8 @@ import { UsersModule } from './users/users.module';
     HealthModule,
     UsersModule,
     AuthModule,
+    ClientsModule,
+    RequestsModule,
   ],
 })
 export class AppModule {}
