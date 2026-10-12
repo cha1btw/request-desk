@@ -8,6 +8,10 @@ export interface Env {
   DATABASE_USER: string;
   DATABASE_PASSWORD: string;
   DATABASE_NAME: string;
+  JWT_SECRET: string;
+  JWT_EXPIRES_IN_SECONDS: number;
+  // Only needed by the seed script, so it is optional.
+  SEED_PASSWORD?: string;
 }
 
 const REQUIRED_STRINGS = [
@@ -15,7 +19,10 @@ const REQUIRED_STRINGS = [
   'DATABASE_USER',
   'DATABASE_PASSWORD',
   'DATABASE_NAME',
+  'JWT_SECRET',
 ] as const;
+
+const MIN_JWT_SECRET_LENGTH = 32;
 
 export function validateEnv(raw: Record<string, unknown>): Env {
   const missing = REQUIRED_STRINGS.filter((key) => !raw[key]);
@@ -23,10 +30,16 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
 
+  const jwtSecret = String(raw.JWT_SECRET);
+  if (jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
+    throw new Error(`JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters long`);
+  }
+
   const port = Number(raw.PORT ?? 3000);
   const databasePort = Number(raw.DATABASE_PORT ?? 5432);
-  if (!Number.isInteger(port) || !Number.isInteger(databasePort)) {
-    throw new Error('PORT and DATABASE_PORT must be integers');
+  const jwtExpiresIn = Number(raw.JWT_EXPIRES_IN_SECONDS ?? 8 * 60 * 60);
+  if (![port, databasePort, jwtExpiresIn].every(Number.isInteger)) {
+    throw new Error('PORT, DATABASE_PORT and JWT_EXPIRES_IN_SECONDS must be integers');
   }
 
   return {
@@ -36,5 +49,8 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     DATABASE_USER: String(raw.DATABASE_USER),
     DATABASE_PASSWORD: String(raw.DATABASE_PASSWORD),
     DATABASE_NAME: String(raw.DATABASE_NAME),
+    JWT_SECRET: jwtSecret,
+    JWT_EXPIRES_IN_SECONDS: jwtExpiresIn,
+    SEED_PASSWORD: raw.SEED_PASSWORD ? String(raw.SEED_PASSWORD) : undefined,
   };
 }
