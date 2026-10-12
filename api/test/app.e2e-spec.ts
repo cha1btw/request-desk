@@ -76,6 +76,15 @@ describe('App (e2e)', () => {
     const done = await http.get('/api/requests?status=done').set(auth).expect(200);
     expect(done.body).toHaveLength(0);
 
+    // CSV export uses the same filters as the list.
+    const csv = await http.get('/api/requests/export?status=new').set(auth).expect(200);
+    expect(csv.headers['content-type']).toContain('text/csv');
+    expect(csv.headers['content-disposition']).toContain('attachment');
+    expect(csv.text).toContain('Fix the door');
+    const emptyCsv = await http.get('/api/requests/export?status=done').set(auth).expect(200);
+    expect(emptyCsv.text).not.toContain('Fix the door');
+    await http.get('/api/requests/export').expect(401);
+
     // Change the status and add a comment.
     await http.patch(`/api/requests/${created.body.id}`).set(auth).send({ status: 'in_progress' }).expect(200);
     await http.post(`/api/requests/${created.body.id}/comments`).set(auth).send({ text: 'Called the client' }).expect(201);
