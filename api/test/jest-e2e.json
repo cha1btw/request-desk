@@ -3,5 +3,7 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
-  "transform": { "^.+\\.ts$": "ts-jest" }
+  "transform": { "^.+\\.ts$": "ts-jest" },
+  "globalSetup": "<rootDir>/global-setup.ts",
+  "testTimeout": 20000
 }
