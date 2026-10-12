@@ -64,6 +64,29 @@ describe('RequestsService', () => {
     });
   });
 
+  describe('exportCsv', () => {
+    it('exports the requests that match the filters', async () => {
+      queryBuilder.getMany.mockResolvedValueOnce([
+        {
+          id: 1,
+          title: 'Fix the door',
+          description: 'It does not close',
+          status: RequestStatus.Done,
+          client: { name: 'Anna', email: 'anna@example.com', phone: '+380441234567' },
+          createdAt: new Date('2026-10-01T10:00:00Z'),
+          updatedAt: new Date('2026-10-01T10:00:00Z'),
+        },
+      ]);
+
+      const csv = await service.exportCsv({ status: RequestStatus.Done });
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('request.status = :status', {
+        status: RequestStatus.Done,
+      });
+      expect(csv).toContain('1,Fix the door,It does not close,done,Anna');
+    });
+  });
+
   describe('findOne', () => {
     it('throws 404 for an unknown id', async () => {
       requestsRepo.findOne.mockResolvedValue(null);

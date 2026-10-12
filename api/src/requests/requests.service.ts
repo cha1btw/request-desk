@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClientsService } from '../clients/clients.service';
 import { escapeLike } from '../common/escape-like';
+import { requestsToCsv } from './csv';
 import { CustomerRequest } from './customer-request.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
@@ -34,6 +35,11 @@ export class RequestsService {
       qb.andWhere('client.name ILIKE :clientName', { clientName: `%${escapeLike(clientName)}%` });
     }
     return qb.getMany();
+  }
+
+  // The same list and filters as findAll(), as CSV text.
+  async exportCsv(query: QueryRequestsDto): Promise<string> {
+    return requestsToCsv(await this.findAll(query));
   }
 
   // One request with its client and its comments (oldest first, with authors).

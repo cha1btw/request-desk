@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -15,6 +15,14 @@ export class RequestsController {
   @Get()
   findAll(@Query() query: QueryRequestsDto) {
     return this.requestsService.findAll(query);
+  }
+
+  // Must be declared before @Get(':id'), otherwise "export" would be read as an id.
+  @Get('export')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="requests.csv"')
+  exportCsv(@Query() query: QueryRequestsDto) {
+    return this.requestsService.exportCsv(query);
   }
 
   @Post()
