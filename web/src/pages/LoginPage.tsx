@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
-import { ApiError } from '../api/client'
+import { getErrorMessage } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 
 export function LoginPage() {
@@ -27,7 +27,7 @@ export function LoginPage() {
       await login(email, password)
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Cannot reach the server. Try again.')
+      setError(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }

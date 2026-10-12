@@ -52,6 +52,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return (await response.json()) as T
 }
 
+// Text for the user when a request failed. API errors carry a readable message
+// (e.g. "Client 9 does not exist"); anything else means we never reached the server.
+export function getErrorMessage(error: unknown): string {
+  return error instanceof ApiError ? error.message : 'Cannot reach the server. Try again.'
+}
+
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body: unknown) => request<T>('POST', path, body),
