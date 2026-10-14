@@ -380,3 +380,30 @@ tbody tr:last-child td {
   margin: 0 0 1rem;
   font-size: 0.9rem;
 }
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 600px) {
+  /* Less important columns are hidden so the rest fits without side scrolling. */
+  .hide-narrow {
+    display: none;
+  }
+
+  .toolbar .field {
+    flex: 1 1 100%;
+  }
+
+  .details {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .details dd {
+    margin-bottom: 0.6rem;
+  }
+
+  th,
+  td {
+    padding: 0.6rem 0.7rem;
+  }
+}

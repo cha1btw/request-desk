@@ -75,7 +75,7 @@ export function ClientsPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
-                <th>Added</th>
+                <th className="hide-narrow">Added</th>
               </tr>
             </thead>
             <tbody>
@@ -84,7 +84,7 @@ export function ClientsPage() {
                   <td>{client.name}</td>
                   <td>{client.email}</td>
                   <td>{client.phone}</td>
-                  <td className="muted">{formatDate(client.createdAt)}</td>
+                  <td className="muted hide-narrow">{formatDate(client.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

@@ -93,7 +93,7 @@ export function UsersPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Added</th>
+                <th className="hide-narrow">Added</th>
               </tr>
             </thead>
             <tbody>
@@ -104,7 +104,7 @@ export function UsersPage() {
                   <td>
                     <span className={`badge badge-${user.role}`}>{user.role === 'admin' ? 'Admin' : 'Manager'}</span>
                   </td>
-                  <td className="muted">{formatDate(user.createdAt)}</td>
+                  <td className="muted hide-narrow">{formatDate(user.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

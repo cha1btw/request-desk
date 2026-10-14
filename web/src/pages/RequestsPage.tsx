@@ -137,7 +137,7 @@ export function RequestsPage() {
                 <th>Title</th>
                 <th>Client</th>
                 <th>Status</th>
-                <th>Created</th>
+                <th className="hide-narrow">Created</th>
               </tr>
             </thead>
             <tbody>
@@ -150,7 +150,7 @@ export function RequestsPage() {
                   <td>
                     <StatusBadge status={request.status} />
                   </td>
-                  <td className="muted">{formatDate(request.createdAt)}</td>
+                  <td className="muted hide-narrow">{formatDate(request.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
