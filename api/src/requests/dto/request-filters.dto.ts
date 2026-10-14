@@ -1,14 +1,10 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
 import { RequestStatus } from '../request-status.enum';
+import { RequestStatsQueryDto } from './request-stats-query.dto';
 
-export class RequestFiltersDto {
+// Filters for the list: the client name search (inherited) plus the status.
+export class RequestFiltersDto extends RequestStatsQueryDto {
   @IsOptional()
   @IsEnum(RequestStatus)
   status?: RequestStatus;
-
-  // Part of the client name, case-insensitive
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  clientName?: string;
 }

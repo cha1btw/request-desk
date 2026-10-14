@@ -18,6 +18,11 @@ describe('RequestsService', () => {
     andWhere: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
+    leftJoin: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    getRawMany: jest.fn().mockResolvedValue([]),
     getMany: jest.fn().mockResolvedValue([]),
     getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
@@ -115,6 +120,43 @@ describe('RequestsService', () => {
         status: RequestStatus.Done,
       });
       expect(csv).toContain('1,Fix the door,It does not close,done,Anna');
+    });
+  });
+
+  describe('countByStatus', () => {
+    it('returns zeros for statuses that have no requests', async () => {
+      queryBuilder.getRawMany.mockResolvedValueOnce([{ status: 'done', count: '2' }]);
+
+      await expect(service.countByStatus({})).resolves.toEqual({
+        new: 0,
+        in_progress: 0,
+        done: 2,
+        total: 2,
+      });
+    });
+
+    it('turns the text counts from Postgres into numbers and adds up the total', async () => {
+      queryBuilder.getRawMany.mockResolvedValueOnce([
+        { status: 'new', count: '5' },
+        { status: 'in_progress', count: '4' },
+        { status: 'done', count: '3' },
+      ]);
+
+      await expect(service.countByStatus({})).resolves.toEqual({
+        new: 5,
+        in_progress: 4,
+        done: 3,
+        total: 12,
+      });
+    });
+
+    it('applies the client name search but never a status filter', async () => {
+      await service.countByStatus({ clientName: ' ann ' });
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledTimes(1);
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('client.name ILIKE :clientName', {
+        clientName: '%ann%',
+      });
     });
   });
 

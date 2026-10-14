@@ -5,6 +5,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { QueryRequestsDto } from './dto/query-requests.dto';
 import { RequestFiltersDto } from './dto/request-filters.dto';
+import { RequestStatsQueryDto } from './dto/request-stats-query.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { RequestsService } from './requests.service';
 
@@ -18,7 +19,13 @@ export class RequestsController {
     return this.requestsService.findPage(query);
   }
 
-  // Must be declared before @Get(':id'), otherwise "export" would be read as an id.
+  // This route and the next one must be declared before @Get(':id'),
+  // otherwise "stats" and "export" would be read as ids.
+  @Get('stats')
+  countByStatus(@Query() query: RequestStatsQueryDto) {
+    return this.requestsService.countByStatus(query);
+  }
+
   @Get('export')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="requests.csv"')
