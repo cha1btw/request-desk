@@ -2,17 +2,31 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, getErrorMessage } from '../api/client'
 import { useFetch } from '../api/useFetch'
-import type { CustomerRequest } from '../api/types'
+import type { CustomerRequest, Page } from '../api/types'
+import { Pager } from '../components/Pager'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatDate } from '../format'
 import { REQUEST_STATUSES } from '../statuses'
 
+const PAGE_SIZE = 10
+
+// A copy of the URL parameters with some keys set (or removed when the value is empty).
+function withParams(previous: URLSearchParams, changes: Record<string, string>): URLSearchParams {
+  const next = new URLSearchParams(previous)
+  for (const [key, value] of Object.entries(changes)) {
+    if (value) next.set(key, value)
+    else next.delete(key)
+  }
+  return next
+}
+
 export function RequestsPage() {
-  // The filters live in the URL (/requests?status=done&clientName=ann), so a
+  // The filters and the page live in the URL (/requests?status=done&page=2), so a
   // reload keeps them and a filtered view can be bookmarked or shared.
   const [searchParams, setSearchParams] = useSearchParams()
   const status = searchParams.get('status') ?? ''
   const clientName = searchParams.get('clientName') ?? ''
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1)
 
   // What the user is typing. It reaches the URL (and the API) 300 ms after
   // they stop typing, so we do not send a request on every keystroke.
@@ -22,50 +36,43 @@ export function RequestsPage() {
     const value = searchText.trim()
     if (value === clientName) return
     const timer = setTimeout(() => {
-      setSearchParams(
-        (previous) => {
-          const next = new URLSearchParams(previous)
-          if (value) next.set('clientName', value)
-          else next.delete('clientName')
-          return next
-        },
-        { replace: true },
-      )
+      // A different search means a different list, so go back to page 1.
+      setSearchParams((previous) => withParams(previous, { clientName: value, page: '' }), { replace: true })
     }, 300)
     return () => clearTimeout(timer)
   }, [searchText, clientName, setSearchParams])
 
   function changeStatus(value: string) {
-    setSearchParams(
-      (previous) => {
-        const next = new URLSearchParams(previous)
-        if (value) next.set('status', value)
-        else next.delete('status')
-        return next
-      },
-      { replace: true },
-    )
+    setSearchParams((previous) => withParams(previous, { status: value, page: '' }), { replace: true })
   }
 
-  const query = new URLSearchParams()
-  if (status) query.set('status', status)
-  if (clientName) query.set('clientName', clientName)
-  const queryString = query.toString()
+  function goToPage(nextPage: number) {
+    setSearchParams((previous) => withParams(previous, { page: nextPage === 1 ? '' : String(nextPage) }))
+  }
 
-  const { data: requests, error, loading } = useFetch<CustomerRequest[]>(
-    `/requests${queryString ? `?${queryString}` : ''}`,
-  )
+  // The filters alone are what the CSV export needs.
+  const filters = new URLSearchParams()
+  if (status) filters.set('status', status)
+  if (clientName) filters.set('clientName', clientName)
+  const filterString = filters.toString()
+
+  const listQuery = new URLSearchParams(filters)
+  listQuery.set('page', String(page))
+  listQuery.set('pageSize', String(PAGE_SIZE))
+
+  const { data, error, loading } = useFetch<Page<CustomerRequest>>(`/requests?${listQuery}`)
+  const requests = data?.items
 
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
-  // Downloads the list with the filters that are active right now.
+  // Downloads the whole list (all pages) with the filters that are active right now.
   async function exportCsv() {
     setExportError(null)
     setExporting(true)
     try {
       const today = new Date().toISOString().slice(0, 10)
-      await api.download(`/requests/export${queryString ? `?${queryString}` : ''}`, `requests-${today}.csv`)
+      await api.download(`/requests/export${filterString ? `?${filterString}` : ''}`, `requests-${today}.csv`)
     } catch (err) {
       setExportError(getErrorMessage(err))
     } finally {
@@ -122,10 +129,13 @@ export function RequestsPage() {
           {error}
         </p>
       )}
-      {loading && !requests && <p className="muted">Loading...</p>}
+      {loading && !data && <p className="muted">Loading...</p>}
 
-      {requests && requests.length === 0 && (
-        <div className="card muted">No requests match these filters.</div>
+      {data && data.total === 0 && <div className="card muted">No requests match these filters.</div>}
+
+      {/* The page number in the URL is past the last page (for example after a filter changed in another tab). */}
+      {data && data.total > 0 && requests?.length === 0 && (
+        <div className="card muted">This page is empty. Use Previous to go back.</div>
       )}
 
       {requests && requests.length > 0 && (
@@ -157,6 +167,8 @@ export function RequestsPage() {
           </table>
         </div>
       )}
+
+      {data && <Pager page={page} pageSize={PAGE_SIZE} total={data.total} onChange={goToPage} />}
     </>
   )
 }
