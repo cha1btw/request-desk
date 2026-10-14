@@ -11,7 +11,8 @@ a React front end, a Nest.js REST API with PostgreSQL, Docker, automated tests a
 
 ## What it does
 
-- **Login** with email and password (JWT). Two roles: `admin` and `manager`. Only an admin can create users.
+- **Login** with email and password (JWT). Two roles: `admin` and `manager`. Login attempts are rate-limited.
+- **Users** page for admins: list users and create new ones. Managers do not see it, and the API refuses them (403).
 - **Clients**: name, email, phone. List and create.
 - **Requests**: title, description, client, status (`new` / `in_progress` / `done`), created and updated time.
   Create, view, edit, change status.
@@ -60,7 +61,7 @@ One Nest module per area. Each has a controller, a service, DTOs and an entity.
 | Module | What it does |
 | --- | --- |
 | `config` | Reads `.env` and validates it at startup. The app refuses to start if something required is missing. |
-| `auth` | Login, `GET /auth/me`, the JWT guard, the roles guard and the `@Public()`, `@Roles()`, `@CurrentUser()` decorators. |
+| `auth` | Login (rate-limited), `GET /auth/me`, the JWT guard, the roles guard and the `@Public()`, `@Roles()`, `@CurrentUser()` decorators. |
 | `users` | List and create users (admin only). Passwords are hashed with bcrypt. |
 | `clients` | List (with name search) and create clients. |
 | `requests` | Requests and their comments, filters, CSV export. |
@@ -92,7 +93,7 @@ All routes are under `/api` and need `Authorization: Bearer <token>` unless mark
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
 | GET | `/health` | public | `{ "status": "ok", "db": "up" }`, or 503 if the database is down |
-| POST | `/auth/login` | public | `{ email, password }` -> `{ accessToken, user }` |
+| POST | `/auth/login` | public | `{ email, password }` -> `{ accessToken, user }`. 10 attempts per minute per IP, then 429. |
 | GET | `/auth/me` | any user | the current user |
 | GET | `/users` | admin | list users |
 | POST | `/users` | admin | create a user (`email`, `name`, `password`, `role`) |
@@ -114,8 +115,11 @@ All routes are under `/api` and need `Authorization: Bearer <token>` unless mark
 | `/requests/new` | Create a request |
 | `/requests/:id` | Details, edit, change status, comments |
 | `/clients` | Client list and create form |
+| `/users` | Admin only: user list and create form |
 
 Every route except `/login` is wrapped in `ProtectedRoute`, which redirects to `/login` when there is no session.
+`/users` is also wrapped in `AdminRoute`, which sends managers back to `/requests`. That only hides the page;
+the real protection is `@Roles(Role.Admin)` on the API.
 The token is kept in `localStorage`. If the API answers 401 (expired token), the app logs out automatically.
 
 ## Tech stack
@@ -124,7 +128,7 @@ The token is kept in `localStorage`. If the API answers 401 (expired token), the
 | --- | --- |
 | API | Nest.js 11, TypeScript, class-validator DTOs |
 | Database | PostgreSQL 17, TypeORM with migrations |
-| Auth | JWT (`@nestjs/jwt`), bcrypt password hashing, no Passport |
+| Auth | JWT (`@nestjs/jwt`), bcrypt password hashing, `@nestjs/throttler` for the login rate limit, no Passport |
 | Front end | React 19, Vite, TypeScript, React Router, plain CSS (no UI library) |
 | Tests | Jest + supertest (API), Vitest + Testing Library (web) |
 | Infra | Docker Compose (postgres, api, web), nginx, GitHub Actions |
@@ -137,6 +141,12 @@ The token is kept in `localStorage`. If the API answers 401 (expired token), the
   Moving to Nest 12 (and Vitest) is on the list below.
 - **No Passport.** The JWT guard is one short file that uses `@nestjs/jwt` directly, which is easier to read and explain.
 - **Global guards.** A new controller is protected by default; opening a route is an explicit `@Public()`.
+- **Login hardening.** Login allows 10 attempts per minute per IP (`@nestjs/throttler`, in memory, so it resets when the API restarts).
+  An unknown email still runs a bcrypt comparison against a dummy hash, so response time does not reveal which emails exist.
+  The API trusts one proxy hop (`trust proxy`) to read the client IP from nginx's `X-Forwarded-For`.
+  Because of that, the API port must not be reachable directly in production, otherwise the header can be faked.
+- **nginx.** Sends security headers (CSP, `X-Frame-Options`, `nosniff`), compresses text with gzip and caches the hashed
+  files under `/assets` for a year while `index.html` is never cached.
 - **CSV is built on the server** from the same query as the list, so the export always matches the filters.
   Cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet does not run them as formulas.
 - **Plain CSS and a small `useFetch` hook** instead of Tailwind and React Query: fewer moving parts for a small app.
@@ -196,19 +206,8 @@ Stop the `web` container first if it is running, because both use port 5173.
 
 ### Create a user (admin only)
 
-There is no user management page yet, so use the API:
-
-```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@example.com","password":"<SEED_PASSWORD>"}'
-# copy "accessToken" from the answer
-
-curl -X POST http://localhost:3000/api/users \
-  -H 'Authorization: Bearer <accessToken>' \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"new@example.com","name":"New Manager","password":"at-least-8-chars","role":"manager"}'
-```
+Log in as an admin, open **Users** in the top bar and fill in the form. Managers cannot see this page.
+The API call behind it is `POST /api/users` and answers 403 to anyone who is not an admin.
 
 ## Run the tests
 
@@ -216,7 +215,7 @@ curl -X POST http://localhost:3000/api/users \
 # API: unit tests (services, guards, CSV, env validation)
 cd api && npm test
 
-# API: e2e tests (login, creating a request, filters, CSV, admin-only routes)
+# API: e2e tests (login, rate limit, creating a request, filters, CSV, admin-only routes)
 docker compose up -d postgres   # from the repository root
 cd api && npm run test:e2e
 
@@ -276,9 +275,9 @@ request-desk/
 ## What I would improve next
 
 - **Safer sessions.** Keep the token in an httpOnly cookie instead of `localStorage`, and add short-lived tokens with refresh.
-- **Brute-force protection.** Rate-limit `/auth/login`.
+- **Shared rate-limit storage.** The login limit is kept in memory; with more than one API instance it needs Redis.
 - **Pagination.** The request and client lists return everything. Fine for a small business, not for thousands of rows.
-- **User management page** for admins (today it is API only), plus password change and deactivating users.
+- **More user management.** Password change, deactivating users, and changing a user's role.
 - **Edit and delete** for clients and comments, and an activity history on requests.
 - **Browser tests** (Playwright) for the main flow: login, create a request, export.
 - **React Query** for caching and refetching instead of the small `useFetch` hook.
