@@ -1,0 +1,33 @@
+# Opens weekly pull requests with dependency updates; CI then tells us if one breaks something.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /api
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Nest 12 is ESM-only and does not work with Jest, so we stay on Nest 11 for now
+      # (see "What I would improve next" in the README). Minor and patch updates still come in.
+      - dependency-name: '@nestjs/*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directories: [/api, /web]
+    schedule:
+      interval: weekly
