@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router'
+import { AdminRoute } from './auth/AdminRoute'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { ClientsPage } from './pages/ClientsPage'
@@ -6,6 +7,7 @@ import { LoginPage } from './pages/LoginPage'
 import { NewRequestPage } from './pages/NewRequestPage'
 import { RequestDetailPage } from './pages/RequestDetailPage'
 import { RequestsPage } from './pages/RequestsPage'
+import { UsersPage } from './pages/UsersPage'
 
 export function App() {
   return (
@@ -18,6 +20,9 @@ export function App() {
           <Route path="/requests/new" element={<NewRequestPage />} />
           <Route path="/requests/:id" element={<RequestDetailPage />} />
           <Route path="/clients" element={<ClientsPage />} />
+          <Route element={<AdminRoute />}>
+            <Route path="/users" element={<UsersPage />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/requests" replace />} />
