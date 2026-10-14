@@ -139,6 +139,33 @@ describe('App (e2e)', () => {
     await http.get('/api/requests?page=abc').set(auth).expect(400);
   });
 
+  it('lets only an admin delete a request, and its comments go with it', async () => {
+    const manager = { Authorization: `Bearer ${await login('manager@e2e.test')}` };
+    const admin = { Authorization: `Bearer ${await login('admin@e2e.test')}` };
+    const client = await http
+      .post('/api/clients')
+      .set(manager)
+      .send({ name: 'Delete Client', email: 'delete@example.com', phone: '+380 50 333 44 55' })
+      .expect(201);
+    const created = await http
+      .post('/api/requests')
+      .set(manager)
+      .send({ title: 'To be deleted', description: 'Short lived', clientId: client.body.id })
+      .expect(201);
+    const id = created.body.id;
+    await http.post(`/api/requests/${id}/comments`).set(manager).send({ text: 'Goes away too' }).expect(201);
+
+    await http.delete(`/api/requests/${id}`).set(manager).expect(403);
+    await http.get(`/api/requests/${id}`).set(manager).expect(200); // still there
+
+    await http.delete(`/api/requests/${id}`).set(admin).expect(204);
+    await http.get(`/api/requests/${id}`).set(manager).expect(404);
+    await http.delete(`/api/requests/${id}`).set(admin).expect(404);
+
+    const leftover = await app.get(DataSource).query('SELECT count(*)::int AS n FROM comments WHERE request_id = $1', [id]);
+    expect(leftover[0].n).toBe(0);
+  });
+
   it('allows only admins to create users', async () => {
     const newUser = { email: 'new@e2e.test', name: 'New User', password, role: 'manager' };
 
