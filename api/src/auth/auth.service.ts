@@ -4,6 +4,11 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { JwtPayload } from './auth.types';
 
+// A real bcrypt hash of a random password nobody knows. When the email does not
+// exist we still compare against it, so "unknown email" takes as long as
+// "wrong password" and response time does not reveal which emails are registered.
+const DUMMY_PASSWORD_HASH = '$2b$10$Lb3IQIW5T1aHpgbKSS7xhekRkM0KGHNU5Ju4YLhjkAjcH7yAPEYES';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -13,7 +18,7 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const user = await this.usersService.findByEmailWithPassword(email);
-    const passwordMatches = user ? await bcrypt.compare(password, user.passwordHash) : false;
+    const passwordMatches = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
 
     // Same message for "no such email" and "wrong password", so the API does
     // not reveal which emails are registered.

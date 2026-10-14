@@ -6,6 +6,12 @@ import { Role } from '../users/role.enum';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 
+// Real bcrypt, but wrapped so the test can see whether compare() was called.
+jest.mock('bcrypt', () => {
+  const actual = jest.requireActual<typeof import('bcrypt')>('bcrypt');
+  return { ...actual, compare: jest.fn(actual.compare) };
+});
+
 describe('AuthService', () => {
   let service: AuthService;
   const usersService = { findByEmailWithPassword: jest.fn() };
@@ -59,5 +65,13 @@ describe('AuthService', () => {
     await expect(service.login('nobody@example.com', 'whatever')).rejects.toThrow(
       'Invalid email or password',
     );
+  });
+
+  it('still runs a bcrypt comparison for an unknown email, so the timing does not give it away', async () => {
+    usersService.findByEmailWithPassword.mockResolvedValue(null);
+
+    await expect(service.login('nobody@example.com', 'whatever')).rejects.toThrow();
+
+    expect(bcrypt.compare).toHaveBeenCalledTimes(1);
   });
 });
