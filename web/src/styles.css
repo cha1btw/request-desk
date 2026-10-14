@@ -364,3 +364,19 @@ tbody tr:last-child td {
   opacity: 0.55;
   transition: opacity 0.15s;
 }
+
+.badge-admin {
+  color: #6b21a8;
+  background: #f1e4fb;
+}
+
+.badge-manager {
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.hint {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}

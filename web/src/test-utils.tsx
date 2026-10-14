@@ -20,9 +20,13 @@ export function mockApi(routes: Record<string, unknown | ((body: unknown) => unk
   return fetchMock
 }
 
-// Renders a page at `url`, logged in as a manager, inside the providers the real app has.
-export function renderPage(element: ReactElement, { path, url }: { path: string; url: string }) {
-  saveSession({ token: 'test-token', user: { id: 1, email: 'olena@example.com', name: 'Olena', role: 'manager' } })
+// Renders a page at `url`, logged in (as a manager unless `role` says otherwise),
+// inside the providers the real app has.
+export function renderPage(
+  element: ReactElement,
+  { path, url, role = 'manager' }: { path: string; url: string; role?: 'admin' | 'manager' },
+) {
+  saveSession({ token: 'test-token', user: { id: 1, email: 'olena@example.com', name: 'Olena', role } })
   return render(
     <AuthProvider>
       <MemoryRouter initialEntries={[url]}>
