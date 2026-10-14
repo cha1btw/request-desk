@@ -38,6 +38,9 @@ export interface RequestComment {
   createdAt: string
 }
 
+// GET /requests/stats: how many requests are in each status.
+export type StatusCounts = Record<RequestStatus, number> & { total: number }
+
 // What a paginated list endpoint returns.
 export interface Page<T> {
   items: T[]
