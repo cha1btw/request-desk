@@ -31,6 +31,7 @@ describe('RequestsService', () => {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     existsBy: jest.fn(),
+    delete: jest.fn(),
     create: jest.fn((data: Partial<CustomerRequest>) => data),
     save: jest.fn((data: Partial<CustomerRequest>) => Promise.resolve({ id: 10, ...data })),
   };
@@ -216,6 +217,20 @@ describe('RequestsService', () => {
 
       await expect(service.update(5, { clientId: 77 })).rejects.toBeInstanceOf(BadRequestException);
       expect(requestsRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove', () => {
+    it('throws 404 when no request was deleted', async () => {
+      requestsRepo.delete.mockResolvedValue({ affected: 0 });
+      await expect(service.remove(5)).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('deletes the request by id', async () => {
+      requestsRepo.delete.mockResolvedValue({ affected: 1 });
+
+      await expect(service.remove(5)).resolves.toBeUndefined();
+      expect(requestsRepo.delete).toHaveBeenCalledWith({ id: 5 });
     });
   });
 

@@ -126,6 +126,12 @@ export class RequestsService {
     return this.findOne(id);
   }
 
+  // The comments go with it: the database deletes them (ON DELETE CASCADE).
+  async remove(id: number): Promise<void> {
+    const result = await this.requests.delete({ id });
+    if (!result.affected) throw new NotFoundException('Request not found');
+  }
+
   async addComment(requestId: number, authorId: number, dto: CreateCommentDto): Promise<RequestComment> {
     if (!(await this.requests.existsBy({ id: requestId }))) {
       throw new NotFoundException('Request not found');
