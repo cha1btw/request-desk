@@ -8,6 +8,8 @@ import { RequestsPage } from './RequestsPage'
 const options = { path: '/requests', url: '/requests' }
 
 // The answer of GET /requests: one page of rows plus the total.
+const counts = { new: 5, in_progress: 4, done: 3, total: 12 }
+
 const pageOf = (items: unknown[], { total = items.length, page = 1 } = {}) => ({ items, total, page, pageSize: 10 })
 
 describe('RequestsPage', () => {
@@ -16,6 +18,7 @@ describe('RequestsPage', () => {
 
   it('lists the requests with their client and status', async () => {
     mockApi({
+      'GET /api/requests/stats': counts,
       'GET /api/requests?page=1&pageSize=10': pageOf([
         makeRequest(),
         makeRequest({ id: 6, title: 'Paint the fence', status: 'done' }),
@@ -29,8 +32,22 @@ describe('RequestsPage', () => {
     expect(screen.getAllByText('Anna Petrenko')).toHaveLength(2)
   })
 
+  it('shows how many requests are in each status', async () => {
+    mockApi({
+      'GET /api/requests/stats': counts,
+      'GET /api/requests?page=1&pageSize=10': pageOf([makeRequest()]),
+    })
+
+    renderPage(<RequestsPage />, options)
+
+    expect(await screen.findByRole('button', { name: 'New 5' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'In progress 4' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'All 12' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
   it('asks the API for the chosen status', async () => {
     const fetchMock = mockApi({
+      'GET /api/requests/stats': counts,
       'GET /api/requests?page=1&pageSize=10': pageOf([makeRequest()]),
       'GET /api/requests?status=done&page=1&pageSize=10': pageOf([
         makeRequest({ id: 6, title: 'Paint the fence', status: 'done' }),
@@ -39,15 +56,17 @@ describe('RequestsPage', () => {
     renderPage(<RequestsPage />, options)
     await screen.findByRole('link', { name: 'Fix the door' })
 
-    await userEvent.setup().selectOptions(screen.getByLabelText('Status'), 'Done')
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Done/ }))
 
     expect(await screen.findByRole('link', { name: 'Paint the fence' })).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Fix the door' })).toBeNull()
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?status=done&page=1&pageSize=10', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith('/api/requests?status=done&page=1&pageSize=10', expect.anything())
   })
 
   it('searches by client name after the user stops typing', async () => {
     const fetchMock = mockApi({
+      'GET /api/requests/stats': counts,
+      'GET /api/requests/stats?clientName=ann': { new: 1, in_progress: 0, done: 0, total: 1 },
       'GET /api/requests?page=1&pageSize=10': pageOf([makeRequest()]),
       'GET /api/requests?clientName=ann&page=1&pageSize=10': pageOf([makeRequest({ title: 'Only Anna' })]),
     })
@@ -57,11 +76,12 @@ describe('RequestsPage', () => {
     await userEvent.setup().type(screen.getByLabelText('Client name'), 'ann')
 
     expect(await screen.findByRole('link', { name: 'Only Anna' })).toBeTruthy()
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?clientName=ann&page=1&pageSize=10', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith('/api/requests?clientName=ann&page=1&pageSize=10', expect.anything())
   })
 
   it('downloads a CSV with the active filters', async () => {
     const fetchMock = mockApi({
+      'GET /api/requests/stats': counts,
       'GET /api/requests?status=done&page=1&pageSize=10': pageOf([makeRequest({ status: 'done' })]),
       'GET /api/requests/export?status=done': 'ID,Title',
     })
@@ -81,7 +101,10 @@ describe('RequestsPage', () => {
   })
 
   it('shows a message when nothing matches', async () => {
-    mockApi({ 'GET /api/requests?page=1&pageSize=10': pageOf([]) })
+    mockApi({
+      'GET /api/requests/stats': { new: 0, in_progress: 0, done: 0, total: 0 },
+      'GET /api/requests?page=1&pageSize=10': pageOf([]),
+    })
 
     renderPage(<RequestsPage />, options)
 
@@ -90,6 +113,7 @@ describe('RequestsPage', () => {
 
   it('shows the pager and loads the next page', async () => {
     const fetchMock = mockApi({
+      'GET /api/requests/stats': counts,
       'GET /api/requests?page=1&pageSize=10': pageOf([makeRequest()], { total: 25 }),
       'GET /api/requests?page=2&pageSize=10': pageOf([makeRequest({ id: 15, title: 'On page two' })], {
         total: 25,
@@ -103,25 +127,29 @@ describe('RequestsPage', () => {
 
     expect(await screen.findByRole('link', { name: 'On page two' })).toBeTruthy()
     expect(screen.getByText('Page 2 of 3')).toBeTruthy()
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?page=2&pageSize=10', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith('/api/requests?page=2&pageSize=10', expect.anything())
   })
 
   it('goes back to page 1 when a filter changes', async () => {
     const fetchMock = mockApi({
+      'GET /api/requests/stats': counts,
       'GET /api/requests?page=2&pageSize=10': pageOf([makeRequest()], { total: 25, page: 2 }),
       'GET /api/requests?status=done&page=1&pageSize=10': pageOf([makeRequest({ status: 'done' })]),
     })
     renderPage(<RequestsPage />, { path: '/requests', url: '/requests?page=2' })
     await screen.findByText('Page 2 of 3')
 
-    await userEvent.setup().selectOptions(screen.getByLabelText('Status'), 'Done')
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Done/ }))
 
     await screen.findByRole('link', { name: 'Fix the door' })
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?status=done&page=1&pageSize=10', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith('/api/requests?status=done&page=1&pageSize=10', expect.anything())
   })
 
   it('explains an empty page that is past the end', async () => {
-    mockApi({ 'GET /api/requests?page=9&pageSize=10': pageOf([], { total: 25, page: 9 }) })
+    mockApi({
+      'GET /api/requests/stats': counts,
+      'GET /api/requests?page=9&pageSize=10': pageOf([], { total: 25, page: 9 }),
+    })
 
     renderPage(<RequestsPage />, { path: '/requests', url: '/requests?page=9' })
 
