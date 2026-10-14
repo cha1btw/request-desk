@@ -15,9 +15,9 @@ a React front end, a Nest.js REST API with PostgreSQL, Docker, automated tests a
 - **Users** page for admins: list users and create new ones. Managers do not see it, and the API refuses them (403).
 - **Clients**: name, email, phone. List and create.
 - **Requests**: title, description, client, status (`new` / `in_progress` / `done`), created and updated time.
-  Create, view, edit, change status.
+  Create, view, edit, change status. Admins can also delete a request (its comments go with it).
 - **Comments** on a request, with the author and time.
-- **Filter and search**: filter the request list by status and search by client name. The filters live in the URL.
+- **Filter, search and pages**: filter the request list with status buttons (each shows how many requests are in that status), search by client name, and move through pages of 10. The filters and the page live in the URL.
 - **CSV export** of the list with the filters that are currently active.
 - **Seed script** with one admin, two managers and sample clients, requests and comments.
 
@@ -99,11 +99,13 @@ All routes are under `/api` and need `Authorization: Bearer <token>` unless mark
 | POST | `/users` | admin | create a user (`email`, `name`, `password`, `role`) |
 | GET | `/clients?search=` | any user | list clients, optional name search |
 | POST | `/clients` | any user | create a client |
-| GET | `/requests?status=&clientName=` | any user | list requests, newest first |
-| GET | `/requests/export?status=&clientName=` | any user | the same list as a CSV file |
+| GET | `/requests?status=&clientName=&page=&pageSize=` | any user | one page of requests, newest first: `{ items, total, page, pageSize }` (`pageSize` default 20, max 100) |
+| GET | `/requests/stats?clientName=` | any user | `{ new, in_progress, done, total }`, for the status buttons |
+| GET | `/requests/export?status=&clientName=` | any user | every matching request (all pages) as a CSV file |
 | POST | `/requests` | any user | create a request |
 | GET | `/requests/:id` | any user | one request with its client and comments |
 | PATCH | `/requests/:id` | any user | change title, description, client or status |
+| DELETE | `/requests/:id` | admin | delete a request and its comments (204) |
 | POST | `/requests/:id/comments` | any user | add a comment |
 
 ### Frontend (`web/`)
@@ -111,9 +113,9 @@ All routes are under `/api` and need `Authorization: Bearer <token>` unless mark
 | Route | Page |
 | --- | --- |
 | `/login` | Login form |
-| `/requests` | List, status filter, client search, CSV button |
+| `/requests` | List with status buttons, client search, pages, CSV button |
 | `/requests/new` | Create a request |
-| `/requests/:id` | Details, edit, change status, comments |
+| `/requests/:id` | Details, edit, change status, comments, delete (admin) |
 | `/clients` | Client list and create form |
 | `/users` | Admin only: user list and create form |
 
@@ -147,6 +149,8 @@ The token is kept in `localStorage`. If the API answers 401 (expired token), the
   Because of that, the API port must not be reachable directly in production, otherwise the header can be faked.
 - **nginx.** Sends security headers (CSP, `X-Frame-Options`, `nosniff`), compresses text with gzip and caches the hashed
   files under `/assets` for a year while `index.html` is never cached.
+- **Pagination on the server.** `GET /requests` answers one page plus the total, so the UI can show "Showing 11-20 of 42".
+  The status counters have their own small endpoint, because counting per status is a different query from listing rows.
 - **CSV is built on the server** from the same query as the list, so the export always matches the filters.
   Cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet does not run them as formulas.
 - **Plain CSS and a small `useFetch` hook** instead of Tailwind and React Query: fewer moving parts for a small app.
@@ -233,9 +237,13 @@ They clear its tables at the start of each run and never touch your development 
 
 `.github/workflows/ci.yml` runs on every push and pull request with three jobs:
 
-1. **API**: lint, typecheck, unit tests, e2e tests against a Postgres service container, build.
-2. **Web**: lint, typecheck, tests, build.
+1. **API**: `npm audit` for production dependencies, lint, typecheck, unit tests, e2e tests against a Postgres service container, build.
+2. **Web**: `npm audit` for production dependencies, lint, typecheck, tests, build.
 3. **Docker**: `docker compose up --build --wait`, then checks the API and the web app respond.
+
+The audit step fails the build on high-severity vulnerabilities in packages that ship to production.
+Dependabot (`.github/dependabot.yml`) opens weekly pull requests with dependency updates, so CI checks each one.
+Major `@nestjs/*` updates are skipped on purpose until the move to Nest 12.
 
 ## Environment variables
 
@@ -264,7 +272,7 @@ Copy `.env.example` to `.env`. Never commit `.env`; the example file contains pl
 request-desk/
 ├── docker-compose.yml        postgres, api, web
 ├── .env.example              placeholder values only
-├── .github/workflows/ci.yml  CI
+├── .github/                  CI workflow and Dependabot config
 ├── api/                      Nest.js API
 │   ├── src/                  config, auth, users, clients, requests, health, database (migrations, seed)
 │   └── test/                 e2e tests
@@ -276,10 +284,11 @@ request-desk/
 
 - **Safer sessions.** Keep the token in an httpOnly cookie instead of `localStorage`, and add short-lived tokens with refresh.
 - **Shared rate-limit storage.** The login limit is kept in memory; with more than one API instance it needs Redis.
-- **Pagination.** The request and client lists return everything. Fine for a small business, not for thousands of rows.
+- **Pagination for clients and users.** The request list is paginated; the client and user lists still return everything.
 - **More user management.** Password change, deactivating users, and changing a user's role.
 - **Edit and delete** for clients and comments, and an activity history on requests.
 - **Browser tests** (Playwright) for the main flow: login, create a request, export.
 - **React Query** for caching and refetching instead of the small `useFetch` hook.
 - **Upgrade to Nest 12 and Vitest** once the ESM-only setup is worth the migration.
 - **Observability.** Structured logs and request IDs; a production deployment with HTTPS.
+- **Soft delete.** Deleting a request is permanent today; an `archived_at` column would make it recoverable.
