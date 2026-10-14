@@ -3,7 +3,7 @@ import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
-import { QueryRequestsDto } from './dto/query-requests.dto';
+import { RequestFiltersDto } from './dto/request-filters.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { RequestsService } from './requests.service';
 
@@ -13,16 +13,16 @@ export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
   @Get()
-  findAll(@Query() query: QueryRequestsDto) {
-    return this.requestsService.findAll(query);
+  findAll(@Query() filters: RequestFiltersDto) {
+    return this.requestsService.findAll(filters);
   }
 
   // Must be declared before @Get(':id'), otherwise "export" would be read as an id.
   @Get('export')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="requests.csv"')
-  exportCsv(@Query() query: QueryRequestsDto) {
-    return this.requestsService.exportCsv(query);
+  exportCsv(@Query() filters: RequestFiltersDto) {
+    return this.requestsService.exportCsv(filters);
   }
 
   @Post()

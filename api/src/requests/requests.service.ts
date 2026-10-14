@@ -7,7 +7,7 @@ import { requestsToCsv } from './csv';
 import { CustomerRequest } from './customer-request.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
-import { QueryRequestsDto } from './dto/query-requests.dto';
+import { RequestFiltersDto } from './dto/request-filters.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { RequestComment } from './request-comment.entity';
 
@@ -20,26 +20,31 @@ export class RequestsService {
   ) {}
 
   // Newest first. Each filter is optional and they combine with AND.
-  findAll(query: QueryRequestsDto): Promise<CustomerRequest[]> {
+  // The list, the CSV export (and later the page counts) all build on this one query.
+  private filteredQuery(filters: RequestFiltersDto) {
     const qb = this.requests
       .createQueryBuilder('request')
       .leftJoinAndSelect('request.client', 'client')
       .orderBy('request.createdAt', 'DESC')
       .addOrderBy('request.id', 'DESC');
 
-    if (query.status) {
-      qb.andWhere('request.status = :status', { status: query.status });
+    if (filters.status) {
+      qb.andWhere('request.status = :status', { status: filters.status });
     }
-    const clientName = query.clientName?.trim();
+    const clientName = filters.clientName?.trim();
     if (clientName) {
       qb.andWhere('client.name ILIKE :clientName', { clientName: `%${escapeLike(clientName)}%` });
     }
-    return qb.getMany();
+    return qb;
+  }
+
+  findAll(filters: RequestFiltersDto): Promise<CustomerRequest[]> {
+    return this.filteredQuery(filters).getMany();
   }
 
   // The same list and filters as findAll(), as CSV text.
-  async exportCsv(query: QueryRequestsDto): Promise<string> {
-    return requestsToCsv(await this.findAll(query));
+  async exportCsv(filters: RequestFiltersDto): Promise<string> {
+    return requestsToCsv(await this.findAll(filters));
   }
 
   // One request with its client and its comments (oldest first, with authors).

@@ -1,7 +1,7 @@
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { RequestStatus } from '../request-status.enum';
 
-export class QueryRequestsDto {
+export class RequestFiltersDto {
   @IsOptional()
   @IsEnum(RequestStatus)
   status?: RequestStatus;
