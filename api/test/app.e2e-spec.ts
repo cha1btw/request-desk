@@ -70,11 +70,12 @@ describe('App (e2e)', () => {
 
     // It shows up in the list, and the filters work.
     const all = await http.get('/api/requests').set(auth).expect(200);
-    expect(all.body).toHaveLength(1);
+    expect(all.body).toMatchObject({ total: 1, page: 1, pageSize: 20 });
+    expect(all.body.items).toHaveLength(1);
     const byName = await http.get('/api/requests?clientName=anna&status=new').set(auth).expect(200);
-    expect(byName.body).toHaveLength(1);
+    expect(byName.body.items).toHaveLength(1);
     const done = await http.get('/api/requests?status=done').set(auth).expect(200);
-    expect(done.body).toHaveLength(0);
+    expect(done.body).toMatchObject({ total: 0, items: [] });
 
     // CSV export uses the same filters as the list.
     const csv = await http.get('/api/requests/export?status=new').set(auth).expect(200);
@@ -93,6 +94,42 @@ describe('App (e2e)', () => {
     expect(detail.body.status).toBe('in_progress');
     expect(detail.body.comments).toHaveLength(1);
     expect(detail.body.comments[0]).toMatchObject({ text: 'Called the client', author: { name: 'E2E Manager' } });
+  });
+
+  it('splits the list into pages and rejects bad page numbers', async () => {
+    const auth = { Authorization: `Bearer ${await login('manager@e2e.test')}` };
+    const client = await http
+      .post('/api/clients')
+      .set(auth)
+      .send({ name: 'Paging Client', email: 'paging@example.com', phone: '+380 50 111 22 33' })
+      .expect(201);
+    for (const title of ['Second request', 'Third request']) {
+      await http
+        .post('/api/requests')
+        .set(auth)
+        .send({ title, description: 'Created for the paging test', clientId: client.body.id })
+        .expect(201);
+    }
+
+    // 3 requests in total (one from the test above); newest first.
+    const first = await http.get('/api/requests?pageSize=2').set(auth).expect(200);
+    expect(first.body).toMatchObject({ total: 3, page: 1, pageSize: 2 });
+    expect(first.body.items.map((item: { title: string }) => item.title)).toEqual([
+      'Third request',
+      'Second request',
+    ]);
+
+    const second = await http.get('/api/requests?pageSize=2&page=2').set(auth).expect(200);
+    expect(second.body.items.map((item: { title: string }) => item.title)).toEqual(['Fix the door']);
+
+    // The page counts only what matches the filters.
+    const filtered = await http.get('/api/requests?clientName=paging&pageSize=1').set(auth).expect(200);
+    expect(filtered.body).toMatchObject({ total: 2, pageSize: 1 });
+    expect(filtered.body.items).toHaveLength(1);
+
+    await http.get('/api/requests?page=0').set(auth).expect(400);
+    await http.get('/api/requests?pageSize=101').set(auth).expect(400);
+    await http.get('/api/requests?page=abc').set(auth).expect(400);
   });
 
   it('allows only admins to create users', async () => {
