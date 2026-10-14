@@ -127,6 +127,13 @@ describe('App (e2e)', () => {
     expect(filtered.body).toMatchObject({ total: 2, pageSize: 1 });
     expect(filtered.body.items).toHaveLength(1);
 
+    // Status counters: all three statuses are always present, and the client search narrows them.
+    const stats = await http.get('/api/requests/stats').set(auth).expect(200);
+    expect(stats.body).toEqual({ new: 2, in_progress: 1, done: 0, total: 3 });
+    const paging = await http.get('/api/requests/stats?clientName=paging').set(auth).expect(200);
+    expect(paging.body).toEqual({ new: 2, in_progress: 0, done: 0, total: 2 });
+    await http.get('/api/requests/stats').expect(401);
+
     await http.get('/api/requests?page=0').set(auth).expect(400);
     await http.get('/api/requests?pageSize=101').set(auth).expect(400);
     await http.get('/api/requests?page=abc').set(auth).expect(400);
