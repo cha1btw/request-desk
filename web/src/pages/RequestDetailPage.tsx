@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { api, getErrorMessage } from '../api/client'
 import type { Client, CustomerRequest, RequestStatus } from '../api/types'
 import { useFetch } from '../api/useFetch'
+import { useAuth } from '../auth/useAuth'
 import { RequestForm, type RequestFormValues } from '../components/RequestForm'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatDate } from '../format'
@@ -10,6 +11,8 @@ import { REQUEST_STATUSES } from '../statuses'
 
 export function RequestDetailPage() {
   const { id } = useParams()
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const { data: request, error, loading, reload } = useFetch<CustomerRequest>(`/requests/${id}`)
   const [editing, setEditing] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -25,6 +28,18 @@ export function RequestDetailPage() {
       setActionError(getErrorMessage(err))
     } finally {
       setSavingStatus(false)
+    }
+  }
+
+  // Admins only (the API enforces it too). Asks first, because it cannot be undone.
+  async function deleteRequest() {
+    if (!window.confirm('Delete this request and all its comments? This cannot be undone.')) return
+    setActionError(null)
+    try {
+      await api.delete(`/requests/${id}`)
+      navigate('/requests', { replace: true })
+    } catch (err) {
+      setActionError(getErrorMessage(err))
     }
   }
 
@@ -101,6 +116,11 @@ export function RequestDetailPage() {
             <button type="button" className="btn btn-secondary" onClick={() => setEditing(true)}>
               Edit
             </button>
+            {user?.role === 'admin' && (
+              <button type="button" className="btn btn-danger" onClick={deleteRequest}>
+                Delete
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -458,3 +458,13 @@ tbody tr:last-child td {
   font-weight: 600;
   opacity: 0.8;
 }
+
+.btn-danger {
+  background: var(--surface);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
