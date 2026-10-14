@@ -11,6 +11,11 @@ export interface User {
   role: Role
 }
 
+// What GET /users returns (admin only): the same as User plus the creation time.
+export interface AdminUser extends User {
+  createdAt: string
+}
+
 export interface LoginResponse {
   accessToken: string
   user: User
