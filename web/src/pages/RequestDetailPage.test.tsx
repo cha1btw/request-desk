@@ -56,6 +56,43 @@ describe('RequestDetailPage', () => {
     expect(postCall?.[1]?.body).toBe('{"text":"Visit planned for Monday"}')
   })
 
+  describe('deleting', () => {
+    const routes = { 'GET /api/requests/5': makeRequest(), 'DELETE /api/requests/5': null }
+
+    afterEach(() => vi.restoreAllMocks())
+
+    it('does not offer Delete to a manager', async () => {
+      mockApi(routes)
+      renderPage(<RequestDetailPage />, options)
+      await screen.findByRole('heading', { name: 'Fix the door' })
+
+      expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+    })
+
+    it('deletes after the admin confirms', async () => {
+      const fetchMock = mockApi(routes)
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      renderPage(<RequestDetailPage />, { ...options, role: 'admin' })
+      await screen.findByRole('heading', { name: 'Fix the door' })
+
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Delete' }))
+
+      expect(confirm).toHaveBeenCalledTimes(1)
+      expect(fetchMock.mock.calls.some(([url, init]) => url === '/api/requests/5' && init?.method === 'DELETE')).toBe(true)
+    })
+
+    it('deletes nothing when the admin cancels', async () => {
+      const fetchMock = mockApi(routes)
+      vi.spyOn(window, 'confirm').mockReturnValue(false)
+      renderPage(<RequestDetailPage />, { ...options, role: 'admin' })
+      await screen.findByRole('heading', { name: 'Fix the door' })
+
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Delete' }))
+
+      expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
+    })
+  })
+
   it('shows the API error when the request does not exist', async () => {
     vi.stubGlobal(
       'fetch',
