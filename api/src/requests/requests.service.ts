@@ -3,13 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ClientsService } from '../clients/clients.service';
 import { escapeLike } from '../common/escape-like';
+import type { Page } from '../common/page';
 import { requestsToCsv } from './csv';
 import { CustomerRequest } from './customer-request.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
+import { QueryRequestsDto } from './dto/query-requests.dto';
 import { RequestFiltersDto } from './dto/request-filters.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { RequestComment } from './request-comment.entity';
+
+const DEFAULT_PAGE_SIZE = 20;
 
 @Injectable()
 export class RequestsService {
@@ -38,6 +42,19 @@ export class RequestsService {
     return qb;
   }
 
+  // One page of the list, plus the total so the UI can show "page 2 of 5".
+  async findPage(query: QueryRequestsDto): Promise<Page<CustomerRequest>> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
+
+    const [items, total] = await this.filteredQuery(query)
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+    return { items, total, page, pageSize };
+  }
+
+  // Everything that matches, without paging (used by the CSV export).
   findAll(filters: RequestFiltersDto): Promise<CustomerRequest[]> {
     return this.filteredQuery(filters).getMany();
   }

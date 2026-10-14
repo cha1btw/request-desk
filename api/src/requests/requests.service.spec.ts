@@ -16,7 +16,10 @@ describe('RequestsService', () => {
     orderBy: jest.fn().mockReturnThis(),
     addOrderBy: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
     getMany: jest.fn().mockResolvedValue([]),
+    getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
   const requestsRepo = {
     createQueryBuilder: jest.fn(() => queryBuilder),
@@ -46,10 +49,38 @@ describe('RequestsService', () => {
     service = moduleRef.get(RequestsService);
   });
 
+  describe('findPage', () => {
+    it('returns the first 20 rows when no page is asked for', async () => {
+      queryBuilder.getManyAndCount.mockResolvedValueOnce([[{ id: 1 }], 41]);
+
+      const result = await service.findPage({});
+
+      expect(queryBuilder.skip).toHaveBeenCalledWith(0);
+      expect(queryBuilder.take).toHaveBeenCalledWith(20);
+      expect(result).toEqual({ items: [{ id: 1 }], total: 41, page: 1, pageSize: 20 });
+    });
+
+    it('skips the rows of the earlier pages', async () => {
+      await service.findPage({ page: 3, pageSize: 10 });
+
+      expect(queryBuilder.skip).toHaveBeenCalledWith(20);
+      expect(queryBuilder.take).toHaveBeenCalledWith(10);
+    });
+
+    it('applies the filters before counting', async () => {
+      await service.findPage({ status: RequestStatus.New, page: 2 });
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('request.status = :status', {
+        status: RequestStatus.New,
+      });
+    });
+  });
+
   describe('findAll', () => {
     it('adds no filters when the query is empty', async () => {
       await service.findAll({});
       expect(queryBuilder.andWhere).not.toHaveBeenCalled();
+      expect(queryBuilder.take).not.toHaveBeenCalled();
     });
 
     it('filters by status and by client name together', async () => {

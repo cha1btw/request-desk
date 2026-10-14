@@ -3,6 +3,7 @@ import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
+import { QueryRequestsDto } from './dto/query-requests.dto';
 import { RequestFiltersDto } from './dto/request-filters.dto';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { RequestsService } from './requests.service';
@@ -13,8 +14,8 @@ export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
   @Get()
-  findAll(@Query() filters: RequestFiltersDto) {
-    return this.requestsService.findAll(filters);
+  findAll(@Query() query: QueryRequestsDto) {
+    return this.requestsService.findPage(query);
   }
 
   // Must be declared before @Get(':id'), otherwise "export" would be read as an id.
