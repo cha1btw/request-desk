@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, NotFoundException, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, NotFoundException, Post, UseGuards } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import type { AuthUser } from './auth.types';
@@ -14,6 +15,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @UseGuards(ThrottlerGuard) // slows down password guessing: too many tries from one IP -> 429
   @HttpCode(200) // POST defaults to 201 (created); a login creates nothing
   @Post('login')
   login(@Body() dto: LoginDto) {
