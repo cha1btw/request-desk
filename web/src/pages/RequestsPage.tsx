@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, getErrorMessage } from '../api/client'
 import { useFetch } from '../api/useFetch'
-import type { CustomerRequest, Page } from '../api/types'
+import type { CustomerRequest, Page, StatusCounts } from '../api/types'
 import { Pager } from '../components/Pager'
 import { StatusBadge } from '../components/StatusBadge'
+import { StatusFilter } from '../components/StatusFilter'
 import { formatDate } from '../format'
-import { REQUEST_STATUSES } from '../statuses'
 
 const PAGE_SIZE = 10
 
@@ -63,6 +63,13 @@ export function RequestsPage() {
   const { data, error, loading } = useFetch<Page<CustomerRequest>>(`/requests?${listQuery}`)
   const requests = data?.items
 
+  // The numbers on the status buttons follow the client search but not the status
+  // itself, so they only reload when the search changes. If they fail to load, the
+  // buttons simply show no numbers.
+  const { data: counts } = useFetch<StatusCounts>(
+    `/requests/stats${clientName ? `?${new URLSearchParams({ clientName })}` : ''}`,
+  )
+
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
@@ -100,18 +107,9 @@ export function RequestsPage() {
         </p>
       )}
 
+      <StatusFilter value={status} counts={counts} onChange={changeStatus} />
+
       <div className="toolbar">
-        <div className="field">
-          <label htmlFor="status-filter">Status</label>
-          <select id="status-filter" value={status} onChange={(event) => changeStatus(event.target.value)}>
-            <option value="">All statuses</option>
-            {REQUEST_STATUSES.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
         <div className="field">
           <label htmlFor="client-search">Client name</label>
           <input
