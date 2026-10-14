@@ -7,12 +7,20 @@ import { RequestsPage } from './RequestsPage'
 
 const options = { path: '/requests', url: '/requests' }
 
+// The answer of GET /requests: one page of rows plus the total.
+const pageOf = (items: unknown[], { total = items.length, page = 1 } = {}) => ({ items, total, page, pageSize: 10 })
+
 describe('RequestsPage', () => {
   beforeEach(() => clearSession())
   afterEach(() => vi.unstubAllGlobals())
 
   it('lists the requests with their client and status', async () => {
-    mockApi({ 'GET /api/requests': [makeRequest(), makeRequest({ id: 6, title: 'Paint the fence', status: 'done' })] })
+    mockApi({
+      'GET /api/requests?page=1&pageSize=10': pageOf([
+        makeRequest(),
+        makeRequest({ id: 6, title: 'Paint the fence', status: 'done' }),
+      ]),
+    })
 
     renderPage(<RequestsPage />, options)
 
@@ -23,8 +31,10 @@ describe('RequestsPage', () => {
 
   it('asks the API for the chosen status', async () => {
     const fetchMock = mockApi({
-      'GET /api/requests': [makeRequest()],
-      'GET /api/requests?status=done': [makeRequest({ id: 6, title: 'Paint the fence', status: 'done' })],
+      'GET /api/requests?page=1&pageSize=10': pageOf([makeRequest()]),
+      'GET /api/requests?status=done&page=1&pageSize=10': pageOf([
+        makeRequest({ id: 6, title: 'Paint the fence', status: 'done' }),
+      ]),
     })
     renderPage(<RequestsPage />, options)
     await screen.findByRole('link', { name: 'Fix the door' })
@@ -33,13 +43,13 @@ describe('RequestsPage', () => {
 
     expect(await screen.findByRole('link', { name: 'Paint the fence' })).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Fix the door' })).toBeNull()
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?status=done', expect.anything())
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?status=done&page=1&pageSize=10', expect.anything())
   })
 
   it('searches by client name after the user stops typing', async () => {
     const fetchMock = mockApi({
-      'GET /api/requests': [makeRequest()],
-      'GET /api/requests?clientName=ann': [makeRequest({ title: 'Only Anna' })],
+      'GET /api/requests?page=1&pageSize=10': pageOf([makeRequest()]),
+      'GET /api/requests?clientName=ann&page=1&pageSize=10': pageOf([makeRequest({ title: 'Only Anna' })]),
     })
     renderPage(<RequestsPage />, options)
     await screen.findByRole('link', { name: 'Fix the door' })
@@ -47,12 +57,12 @@ describe('RequestsPage', () => {
     await userEvent.setup().type(screen.getByLabelText('Client name'), 'ann')
 
     expect(await screen.findByRole('link', { name: 'Only Anna' })).toBeTruthy()
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?clientName=ann', expect.anything())
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?clientName=ann&page=1&pageSize=10', expect.anything())
   })
 
   it('downloads a CSV with the active filters', async () => {
     const fetchMock = mockApi({
-      'GET /api/requests?status=done': [makeRequest({ status: 'done' })],
+      'GET /api/requests?status=done&page=1&pageSize=10': pageOf([makeRequest({ status: 'done' })]),
       'GET /api/requests/export?status=done': 'ID,Title',
     })
     // jsdom cannot create object URLs or follow download links, so we fake both.
@@ -71,10 +81,50 @@ describe('RequestsPage', () => {
   })
 
   it('shows a message when nothing matches', async () => {
-    mockApi({ 'GET /api/requests': [] })
+    mockApi({ 'GET /api/requests?page=1&pageSize=10': pageOf([]) })
 
     renderPage(<RequestsPage />, options)
 
     expect(await screen.findByText('No requests match these filters.')).toBeTruthy()
+  })
+
+  it('shows the pager and loads the next page', async () => {
+    const fetchMock = mockApi({
+      'GET /api/requests?page=1&pageSize=10': pageOf([makeRequest()], { total: 25 }),
+      'GET /api/requests?page=2&pageSize=10': pageOf([makeRequest({ id: 15, title: 'On page two' })], {
+        total: 25,
+        page: 2,
+      }),
+    })
+    renderPage(<RequestsPage />, options)
+    expect(await screen.findByText('Showing 1-10 of 25')).toBeTruthy()
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
+
+    expect(await screen.findByRole('link', { name: 'On page two' })).toBeTruthy()
+    expect(screen.getByText('Page 2 of 3')).toBeTruthy()
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?page=2&pageSize=10', expect.anything())
+  })
+
+  it('goes back to page 1 when a filter changes', async () => {
+    const fetchMock = mockApi({
+      'GET /api/requests?page=2&pageSize=10': pageOf([makeRequest()], { total: 25, page: 2 }),
+      'GET /api/requests?status=done&page=1&pageSize=10': pageOf([makeRequest({ status: 'done' })]),
+    })
+    renderPage(<RequestsPage />, { path: '/requests', url: '/requests?page=2' })
+    await screen.findByText('Page 2 of 3')
+
+    await userEvent.setup().selectOptions(screen.getByLabelText('Status'), 'Done')
+
+    await screen.findByRole('link', { name: 'Fix the door' })
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/requests?status=done&page=1&pageSize=10', expect.anything())
+  })
+
+  it('explains an empty page that is past the end', async () => {
+    mockApi({ 'GET /api/requests?page=9&pageSize=10': pageOf([], { total: 25, page: 9 }) })
+
+    renderPage(<RequestsPage />, { path: '/requests', url: '/requests?page=9' })
+
+    expect(await screen.findByText(/This page is empty/)).toBeTruthy()
   })
 })
