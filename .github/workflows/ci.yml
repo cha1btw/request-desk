@@ -53,6 +53,8 @@ jobs:
           cache: npm
           cache-dependency-path: api/package-lock.json
       - run: npm ci
+      # Fails the build when a package that ships to production has a known high-severity issue.
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -73,6 +75,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
