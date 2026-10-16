@@ -518,3 +518,8 @@ tbody tr:last-child td {
 .btn-danger:hover:not(:disabled) {
   background: var(--danger-bg);
 }
+
+.theme-toggle {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+}

@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { useAuth } from '../auth/useAuth'
+import { ThemeToggle } from './ThemeToggle'
 
 // The frame around every logged-in page: top bar + the current page below it.
 export function Layout() {
@@ -18,6 +19,7 @@ export function Layout() {
             {user?.role === 'admin' && <NavLink to="/users">Users</NavLink>}
           </nav>
           <div className="user-box">
+            <ThemeToggle />
             <span>
               {user?.name} ({user?.role})
             </span>
