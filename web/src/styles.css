@@ -15,6 +15,56 @@
   --status-progress-bg: #fdf0d5;
   --status-done: #1b6e3c;
   --status-done-bg: #dff3e6;
+  --role-admin: #6b21a8;
+  --role-admin-bg: #f1e4fb;
+  --on-accent: #ffffff;
+  color-scheme: light;
+}
+
+/* Dark palette. The same block is written twice on purpose: the first copy follows the
+   operating system, the second one is used when the user picks "dark" with the toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f141b;
+    --surface: #18202b;
+    --text: #e6eaf0;
+    --muted: #9aa6b5;
+    --border: #2b3645;
+    --accent: #3b82f6;
+    --accent-hover: #2f6fdb;
+    --danger: #f97066;
+    --danger-bg: #3a1a18;
+    --status-new: #8ab4ff;
+    --status-new-bg: #1b2a4a;
+    --status-progress: #f5c26b;
+    --status-progress-bg: #3d2f12;
+    --status-done: #6fd39a;
+    --status-done-bg: #14301f;
+    --role-admin: #d8b4fe;
+    --role-admin-bg: #2e1d45;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0f141b;
+  --surface: #18202b;
+  --text: #e6eaf0;
+  --muted: #9aa6b5;
+  --border: #2b3645;
+  --accent: #3b82f6;
+  --accent-hover: #2f6fdb;
+  --danger: #f97066;
+  --danger-bg: #3a1a18;
+  --status-new: #8ab4ff;
+  --status-new-bg: #1b2a4a;
+  --status-progress: #f5c26b;
+  --status-progress-bg: #3d2f12;
+  --status-done: #6fd39a;
+  --status-done-bg: #14301f;
+  --role-admin: #d8b4fe;
+  --role-admin-bg: #2e1d45;
+  color-scheme: dark;
 }
 
 * {
@@ -146,7 +196,7 @@ a:focus-visible {
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
@@ -366,8 +416,8 @@ tbody tr:last-child td {
 }
 
 .badge-admin {
-  color: #6b21a8;
-  background: #f1e4fb;
+  color: var(--role-admin);
+  background: var(--role-admin-bg);
 }
 
 .badge-manager {
@@ -450,7 +500,7 @@ tbody tr:last-child td {
 .chip[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .chip-count {
