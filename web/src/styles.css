@@ -571,3 +571,40 @@ tbody tr {
 tbody tr:hover {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
+
+/* ---------- status bar ---------- */
+
+.status-bar-wrap {
+  margin-bottom: 1rem;
+}
+
+.status-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.status-bar-part {
+  flex-basis: 0;
+  transition: flex-grow 0.3s ease;
+}
+
+.status-bar-new {
+  background: var(--status-new);
+}
+
+.status-bar-in_progress {
+  background: var(--status-progress);
+}
+
+.status-bar-done {
+  background: var(--status-done);
+}
+
+.status-bar-caption {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}

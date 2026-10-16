@@ -6,6 +6,7 @@ import type { CustomerRequest, Page, StatusCounts } from '../api/types'
 import { Pager } from '../components/Pager'
 import { RelativeTime } from '../components/RelativeTime'
 import { StatusBadge } from '../components/StatusBadge'
+import { StatusBar } from '../components/StatusBar'
 import { StatusFilter } from '../components/StatusFilter'
 
 const PAGE_SIZE = 10
@@ -107,6 +108,7 @@ export function RequestsPage() {
         </p>
       )}
 
+      <StatusBar counts={counts} />
       <StatusFilter value={status} counts={counts} onChange={changeStatus} />
 
       <div className="toolbar">
