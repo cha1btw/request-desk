@@ -117,7 +117,7 @@ export function RequestsPage() {
           <input
             id="client-search"
             type="search"
-            placeholder="Search by client..."
+            placeholder="Search by client... (press /)"
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
           />

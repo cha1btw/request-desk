@@ -608,3 +608,13 @@ tbody tr:hover {
   margin: 0.35rem 0 0;
   font-size: 0.85rem;
 }
+
+.toolbar input[type='search'] {
+  min-width: 16rem;
+}
+
+@media (max-width: 600px) {
+  .toolbar input[type='search'] {
+    min-width: 0;
+  }
+}

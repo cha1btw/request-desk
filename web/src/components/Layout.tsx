@@ -1,11 +1,13 @@
 import { NavLink, Outlet } from 'react-router'
 import { useAuth } from '../auth/useAuth'
+import { useShortcuts } from '../useShortcuts'
 import { Avatar } from './Avatar'
 import { ThemeToggle } from './ThemeToggle'
 
 // The frame around every logged-in page: top bar + the current page below it.
 export function Layout() {
   const { user, logout } = useAuth()
+  useShortcuts()
 
   return (
     <>
