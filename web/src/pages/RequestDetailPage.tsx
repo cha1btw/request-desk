@@ -4,6 +4,7 @@ import { api, getErrorMessage } from '../api/client'
 import type { Client, CustomerRequest, RequestStatus } from '../api/types'
 import { useFetch } from '../api/useFetch'
 import { useAuth } from '../auth/useAuth'
+import { Avatar } from '../components/Avatar'
 import { RequestForm, type RequestFormValues } from '../components/RequestForm'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatDate } from '../format'
@@ -191,7 +192,7 @@ function Comments({ request, onAdded }: { request: CustomerRequest; onAdded: () 
         {comments.map((comment) => (
           <li key={comment.id} className="comment">
             <p className="comment-meta">
-              <strong>{comment.author.name}</strong> · {formatDate(comment.createdAt)}
+              <Avatar name={comment.author.name} /> <strong>{comment.author.name}</strong> · {formatDate(comment.createdAt)}
             </p>
             <p className="description">{comment.text}</p>
           </li>
