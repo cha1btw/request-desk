@@ -18,6 +18,8 @@ a React front end, a Nest.js REST API with PostgreSQL, Docker, automated tests a
   Create, view, edit, change status. Admins can also delete a request (its comments go with it).
 - **Comments** on a request, with the author and time.
 - **Filter, search and pages**: filter the request list with status buttons (each shows how many requests are in that status), search by client name, and move through pages of 10. The filters and the page live in the URL.
+- **Theme**: light, dark or automatic (follows the system). One button in the header cycles through them and remembers the choice.
+- **Small touches**: a status bar with the share of finished requests, avatars with initials, relative dates ("2 hours ago", exact time on hover) and keyboard shortcuts: `/` focuses the client search, `n` opens the new request form.
 - **CSV export** of the list with the filters that are currently active.
 - **Seed script** with one admin, two managers and sample clients, requests and comments.
 
