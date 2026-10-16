@@ -4,9 +4,9 @@ import { api, getErrorMessage } from '../api/client'
 import { useFetch } from '../api/useFetch'
 import type { CustomerRequest, Page, StatusCounts } from '../api/types'
 import { Pager } from '../components/Pager'
+import { RelativeTime } from '../components/RelativeTime'
 import { StatusBadge } from '../components/StatusBadge'
 import { StatusFilter } from '../components/StatusFilter'
-import { formatDate } from '../format'
 
 const PAGE_SIZE = 10
 
@@ -158,7 +158,7 @@ export function RequestsPage() {
                   <td>
                     <StatusBadge status={request.status} />
                   </td>
-                  <td className="muted hide-narrow">{formatDate(request.createdAt)}</td>
+                  <td className="muted hide-narrow"><RelativeTime iso={request.createdAt} /></td>
                 </tr>
               ))}
             </tbody>
